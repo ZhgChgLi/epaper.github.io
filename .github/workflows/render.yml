@@ -2,8 +2,8 @@ name: Render photo frame
 
 on:
   schedule:
-    # 每 12 小時：00:05 與 12:05 UTC（= 台北 08:05 / 20:05）
-    - cron: "5 0,12 * * *"
+    # 每小時的第 5 分鐘觸發（GitHub Actions 排程可能延遲幾分鐘，屬正常）
+    - cron: "5 * * * *"
   workflow_dispatch: {}        # 可在 Actions 頁手動觸發
   push:
     branches: [main]           # 改 photos.json / 程式後自動重算

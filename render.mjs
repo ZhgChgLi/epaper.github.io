@@ -10,7 +10,7 @@ const TZ = process.env.TZ || "Asia/Taipei";
 const WIDTH = parseInt(process.env.WIDTH || "1072", 10);
 const HEIGHT = parseInt(process.env.HEIGHT || "1448", 10);
 const OUT = process.env.OUT || "frame.png";
-const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+const ROTATE_MS = 60 * 60 * 1000; // 每 1 小時換一張
 
 const WEEKDAY_FULL = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
 // 讓 Google Fonts 回 truetype（satori 不吃 woff2）
@@ -43,7 +43,7 @@ async function fetchFontTtf(family, weight, text) {
 async function pickPhoto() {
   const list = JSON.parse(await readFile(new URL("./photos.json", import.meta.url), "utf8"));
   if (!Array.isArray(list) || !list.length) throw new Error("photos.json is empty");
-  const idx = Math.floor(Date.now() / TWELVE_HOURS_MS) % list.length;
+  const idx = Math.floor(Date.now() / ROTATE_MS) % list.length;
   const url = list[idx];
   const res = await fetch(url, { headers: { "User-Agent": "kobo-photoframe/1.0" } });
   if (!res.ok) throw new Error(`photo fetch ${res.status} ${url}`);
