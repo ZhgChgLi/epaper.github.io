@@ -11,10 +11,39 @@ const WIDTH = parseInt(process.env.WIDTH || "1072", 10);
 const HEIGHT = parseInt(process.env.HEIGHT || "1448", 10);
 const OUT = process.env.OUT || "frame.png";
 const ROTATE_MS = 60 * 60 * 1000; // 每 1 小時換一張
+const LAT = process.env.LAT || "25.0330";   // 台北（可用環境變數覆蓋）
+const LON = process.env.LON || "121.5654";
 
 const WEEKDAY_FULL = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
 // 讓 Google Fonts 回 truetype（satori 不吃 woff2）
 const TTF_UA = "Mozilla/5.0 (Linux; Android 4.4; Nexus 5) AppleWebKit/537.36";
+
+// WMO 天氣代碼 → 中文（給字體子集化用，下方 WEATHER_VOCAB 需涵蓋這些字）
+const WMO = {
+  0: "晴", 1: "晴時多雲", 2: "多雲", 3: "陰", 45: "霧", 48: "霧",
+  51: "毛毛雨", 53: "小雨", 55: "雨", 56: "凍雨", 57: "凍雨",
+  61: "小雨", 63: "中雨", 65: "大雨", 66: "凍雨", 67: "凍雨",
+  71: "小雪", 73: "中雪", 75: "大雪", 77: "霰",
+  80: "陣雨", 81: "陣雨", 82: "強陣雨", 85: "陣雪", 86: "強陣雪",
+  95: "雷雨", 96: "雷雨", 99: "雷雨",
+};
+const WEATHER_VOCAB = "晴時多雲陰霧毛小中大雨雪陣強雷凍霰最高低";
+
+// Open-Meteo（免金鑰）：目前溫度/天氣 + 今日高低溫
+async function fetchWeather() {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+    `&current=temperature_2m,weather_code` +
+    `&daily=temperature_2m_max,temperature_2m_min` +
+    `&timezone=${encodeURIComponent(TZ)}&forecast_days=1`;
+  const j = await (await fetch(url)).json();
+  return {
+    temp: Math.round(j.current.temperature_2m),
+    cond: WMO[j.current.weather_code] ?? "",
+    hi: Math.round(j.daily.temperature_2m_max[0]),
+    lo: Math.round(j.daily.temperature_2m_min[0]),
+  };
+}
 
 function dateParts(now) {
   const fNum = (opt) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, ...opt }).format(now);
@@ -53,16 +82,21 @@ async function pickPhoto() {
   return `data:${mime};base64,${b64}`;
 }
 
-function buildHtml(dataUrl, p) {
+function buildHtml(dataUrl, p, w) {
   const ff = "Noto Sans TC";
   const shadow = "text-shadow:0 3px 14px rgba(0,0,0,0.85),0 1px 3px rgba(0,0,0,0.9)";
+  // 日期下方的天氣行（抓不到天氣就不顯示）
+  const weatherLine = w
+    ? `<div style="display:flex;align-items:center;font-size:46px;font-weight:400;color:#fff;margin-top:18px;${shadow};">${w.cond} ${w.temp}°   最高 ${w.hi}° 最低 ${w.lo}°</div>`
+    : "";
   return `
   <div style="display:flex;position:relative;width:${WIDTH}px;height:${HEIGHT}px;background:#000;font-family:'${ff}';">
     <img src="${dataUrl}" width="${WIDTH}" height="${HEIGHT}" style="width:${WIDTH}px;height:${HEIGHT}px;object-fit:cover;" />
-    <div style="display:flex;position:absolute;top:0;left:0;width:${WIDTH}px;height:420px;background:linear-gradient(180deg,rgba(0,0,0,0.6) 0%,rgba(0,0,0,0.25) 55%,rgba(0,0,0,0) 100%);"></div>
+    <div style="display:flex;position:absolute;top:0;left:0;width:${WIDTH}px;height:480px;background:linear-gradient(180deg,rgba(0,0,0,0.6) 0%,rgba(0,0,0,0.28) 55%,rgba(0,0,0,0) 100%);"></div>
     <div style="display:flex;flex-direction:column;align-items:center;position:absolute;top:84px;left:0;width:${WIDTH}px;">
       <div style="display:flex;font-size:54px;font-weight:400;color:#fff;${shadow};">${p.weekday}</div>
       <div style="display:flex;font-size:132px;font-weight:700;color:#fff;line-height:1.05;margin-top:6px;${shadow};">${p.month}月${p.day}日</div>
+      ${weatherLine}
     </div>
   </div>`
     .replace(/<!--[\s\S]*?-->/g, "")
@@ -74,9 +108,14 @@ function buildHtml(dataUrl, p) {
 async function main() {
   const p = dateParts(new Date());
   const dataUrl = await pickPhoto();
-  const html = buildHtml(dataUrl, p);
+  const w = await fetchWeather().catch((e) => {
+    console.error("weather failed:", e.message);
+    return null;
+  });
+  if (w) console.log(`weather: ${w.cond} ${w.temp}° (${w.hi}/${w.lo})`);
+  const html = buildHtml(dataUrl, p, w);
 
-  const text = p.weekday + p.month + p.day + "月日0123456789";
+  const text = p.weekday + p.month + p.day + "月日最高低° 0123456789" + WEATHER_VOCAB + (w ? w.cond : "");
   const [r400, r700] = await Promise.all([
     fetchFontTtf("Noto Sans TC", 400, text),
     fetchFontTtf("Noto Sans TC", 700, text),
