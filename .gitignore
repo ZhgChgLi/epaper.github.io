@@ -1,0 +1,5 @@
+node_modules/
+frame.png
+public/
+*.log
+.DS_Store

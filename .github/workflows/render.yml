@@ -1,0 +1,48 @@
+name: Render photo frame
+
+on:
+  schedule:
+    # 每 12 小時：00:05 與 12:05 UTC（= 台北 08:05 / 20:05）
+    - cron: "5 0,12 * * *"
+  workflow_dispatch: {}        # 可在 Actions 頁手動觸發
+  push:
+    branches: [main]           # 改 photos.json / 程式後自動重算
+
+permissions:
+  contents: write              # 發布到 gh-pages 分支需要
+
+concurrency:
+  group: render
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Render frame.png
+        env:
+          TZ: Asia/Taipei
+        run: node render.mjs
+
+      - name: Assemble public/
+        run: |
+          mkdir -p public
+          cp frame.png public/frame.png
+          touch public/.nojekyll
+          [ -f index.html ] && cp index.html public/ || true
+
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          force_orphan: true   # 只保留最新一版，避免 PNG 撐爆 git 歷史

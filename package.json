@@ -1,0 +1,15 @@
+{
+  "name": "kobo-photoframe-pages",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Render a Kobo photo-frame PNG (photo + iOS-lockscreen date) in GitHub Actions, served by GitHub Pages.",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "satori": "^0.12.0",
+    "satori-html": "^0.3.2"
+  }
+}
