@@ -46,3 +46,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
           force_orphan: true   # 只保留最新一版，避免 PNG 撐爆 git 歷史
+          cname: epaper.zhgchg.li   # 每次發布都寫入 CNAME，自訂網域才不會被 force_orphan 洗掉
