@@ -27,7 +27,7 @@ const WMO = {
   80: "陣雨", 81: "陣雨", 82: "強陣雨", 85: "陣雪", 86: "強陣雪",
   95: "雷雨", 96: "雷雨", 99: "雷雨",
 };
-const WEATHER_VOCAB = "晴時多雲陰霧毛小中大雨雪陣強雷凍霰最高低降機率";
+const WEATHER_VOCAB = "晴時多雲陰霧毛小中大雨雪陣強雷凍霰最高低降機率目前後小";
 
 // Open-Meteo（免金鑰）：目前溫度/天氣 + 今日高低溫 + 近三小時降雨機率
 async function fetchWeather() {
@@ -47,14 +47,18 @@ async function fetchWeather() {
   const times = j.hourly?.time || [];
   let idx = times.findIndex((t) => t.startsWith(key));
   if (idx < 0) idx = 0;
+  // 目前 / 3 / 6 / 12 小時後
+  const offsets = [
+    { off: 0, label: "目前" },
+    { off: 3, label: "3小時後" },
+    { off: 6, label: "6小時後" },
+    { off: 12, label: "12小時後" },
+  ];
   const rain = [];
-  for (let k = 1; k <= 3; k++) {
-    const i = idx + k;
+  for (const o of offsets) {
+    const i = idx + o.off;
     if (i < times.length) {
-      rain.push({
-        hour: String(parseInt(times[i].slice(11, 13), 10)),
-        pop: j.hourly.precipitation_probability?.[i] ?? 0,
-      });
+      rain.push({ label: o.label, pop: j.hourly.precipitation_probability?.[i] ?? 0 });
     }
   }
 
@@ -112,7 +116,7 @@ function buildHtml(dataUrl, p, w) {
     ? `<div style="display:flex;align-items:center;font-size:46px;font-weight:400;color:#fff;margin-top:18px;${shadow};">${w.cond} ${w.temp}°   最高 ${w.hi}° 最低 ${w.lo}°</div>`
     : "";
   const rainLine = w && w.rain && w.rain.length
-    ? `<div style="display:flex;align-items:center;font-size:38px;font-weight:400;color:#fff;margin-top:10px;${shadow};">降雨機率 ${w.rain.map((r) => `${r.hour}時 ${r.pop}%`).join("   ")}</div>`
+    ? `<div style="display:flex;align-items:center;font-size:34px;font-weight:400;color:#fff;margin-top:10px;${shadow};">降雨機率 ${w.rain.map((r) => `${r.label} ${r.pop}%`).join("  ")}</div>`
     : "";
   return `
   <div style="display:flex;position:relative;width:${WIDTH}px;height:${HEIGHT}px;background:#000;font-family:'${ff}';">
