@@ -115,13 +115,18 @@ function buildHtml(dataUrl, p, w) {
   const weatherLine = w
     ? `<div style="display:flex;align-items:center;font-size:46px;font-weight:400;color:#fff;margin-top:18px;${shadow};">${w.cond} ${w.temp}°   最高 ${w.hi}° 最低 ${w.lo}°</div>`
     : "";
-  const rainLine = w && w.rain && w.rain.length
-    ? `<div style="display:flex;align-items:center;font-size:34px;font-weight:400;color:#fff;margin-top:10px;${shadow};">降雨機率 ${w.rain.map((r) => `${r.label} ${r.pop}%`).join("  ")}</div>`
-    : "";
+  let rainLine = "";
+  if (w && w.rain && w.rain.length) {
+    const now = w.rain[0];
+    const rest = w.rain.slice(1);
+    rainLine =
+      `<div style="display:flex;align-items:center;font-size:40px;font-weight:400;color:#fff;margin-top:12px;${shadow};">降雨機率 ${now.label} ${now.pop}%</div>` +
+      `<div style="display:flex;align-items:center;font-size:36px;font-weight:400;color:#fff;margin-top:6px;${shadow};">${rest.map((r) => `${r.label} ${r.pop}%`).join("   ")}</div>`;
+  }
   return `
   <div style="display:flex;position:relative;width:${WIDTH}px;height:${HEIGHT}px;background:#000;font-family:'${ff}';">
     <img src="${dataUrl}" width="${WIDTH}" height="${HEIGHT}" style="width:${WIDTH}px;height:${HEIGHT}px;object-fit:cover;" />
-    <div style="display:flex;position:absolute;top:0;left:0;width:${WIDTH}px;height:540px;background:linear-gradient(180deg,rgba(0,0,0,0.62) 0%,rgba(0,0,0,0.3) 55%,rgba(0,0,0,0) 100%);"></div>
+    <div style="display:flex;position:absolute;top:0;left:0;width:${WIDTH}px;height:600px;background:linear-gradient(180deg,rgba(0,0,0,0.62) 0%,rgba(0,0,0,0.32) 60%,rgba(0,0,0,0) 100%);"></div>
     <div style="display:flex;flex-direction:column;align-items:center;position:absolute;top:84px;left:0;width:${WIDTH}px;">
       <div style="display:flex;font-size:54px;font-weight:400;color:#fff;${shadow};">${p.weekday}</div>
       <div style="display:flex;font-size:132px;font-weight:700;color:#fff;line-height:1.05;margin-top:6px;${shadow};">${p.month}月${p.day}日</div>
