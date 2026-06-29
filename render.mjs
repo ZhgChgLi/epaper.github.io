@@ -54,11 +54,13 @@ async function fetchWeather() {
     { off: 6, label: "6小時後" },
     { off: 12, label: "12小時後" },
   ];
+  const nowClock = times[idx] ? times[idx].slice(11, 16) : `${hstr}:00`; // 例如 13:00
   const rain = [];
   for (const o of offsets) {
     const i = idx + o.off;
     if (i < times.length) {
-      rain.push({ label: o.label, pop: j.hourly.precipitation_probability?.[i] ?? 0 });
+      const label = o.off === 0 ? `目前 ${nowClock}` : o.label;
+      rain.push({ label, pop: j.hourly.precipitation_probability?.[i] ?? 0 });
     }
   }
 
@@ -150,7 +152,7 @@ async function main() {
   if (w) console.log(`weather: ${w.cond} ${w.temp}° (${w.hi}/${w.lo})`);
   const html = buildHtml(dataUrl, p, w);
 
-  const text = p.weekday + p.month + p.day + "月日最高低°% 0123456789" + WEATHER_VOCAB + (w ? w.cond : "");
+  const text = p.weekday + p.month + p.day + "月日最高低°%: 0123456789" + WEATHER_VOCAB + (w ? w.cond : "");
   const [r400, r700] = await Promise.all([
     fetchFontTtf("Noto Sans TC", 400, text),
     fetchFontTtf("Noto Sans TC", 700, text),
