@@ -7,8 +7,12 @@ import { html as toVDom } from "satori-html";
 import { Resvg } from "@resvg/resvg-js";
 
 const TZ = process.env.TZ || "Asia/Taipei";
-const WIDTH = parseInt(process.env.WIDTH || "1072", 10);
-const HEIGHT = parseInt(process.env.HEIGHT || "1448", 10);
+// 裝置面板為直向 1072×1448。橫向擺放：用橫向畫布設計，輸出前旋轉 90° 成直向檔，
+// Kobo 端照舊抓圖、fbink 置中滿版即可（機器實體轉 90° 擺放）。
+const PORT_W = parseInt(process.env.WIDTH || "1072", 10);   // 直向輸出寬（=面板寬）
+const PORT_H = parseInt(process.env.HEIGHT || "1448", 10);  // 直向輸出高（=面板高）
+const LAND_W = PORT_H;   // 設計畫布寬（橫向）= 1448
+const LAND_H = PORT_W;   // 設計畫布高（橫向）= 1072
 const OUT = process.env.OUT || "frame.png";
 const ROTATE_MS = 60 * 60 * 1000; // 每 1 小時換一張
 const LAT = process.env.LAT || "25.0330";   // 台北（可用環境變數覆蓋）
@@ -126,10 +130,10 @@ function buildHtml(dataUrl, p, w) {
       `<div style="display:flex;align-items:center;font-size:36px;font-weight:400;color:#fff;margin-top:6px;${shadow};">${rest.map((r) => `${r.label} ${r.pop}%`).join("   ")}</div>`;
   }
   return `
-  <div style="display:flex;position:relative;width:${WIDTH}px;height:${HEIGHT}px;background:#000;font-family:'${ff}';">
-    <img src="${dataUrl}" width="${WIDTH}" height="${HEIGHT}" style="width:${WIDTH}px;height:${HEIGHT}px;object-fit:cover;" />
-    <div style="display:flex;position:absolute;top:0;left:0;width:${WIDTH}px;height:600px;background:linear-gradient(180deg,rgba(0,0,0,0.62) 0%,rgba(0,0,0,0.32) 60%,rgba(0,0,0,0) 100%);"></div>
-    <div style="display:flex;flex-direction:column;align-items:center;position:absolute;top:84px;left:0;width:${WIDTH}px;">
+  <div style="display:flex;position:relative;width:${LAND_W}px;height:${LAND_H}px;background:#000;font-family:'${ff}';">
+    <img src="${dataUrl}" width="${LAND_W}" height="${LAND_H}" style="width:${LAND_W}px;height:${LAND_H}px;object-fit:cover;" />
+    <div style="display:flex;position:absolute;top:0;left:0;width:${LAND_W}px;height:480px;background:linear-gradient(180deg,rgba(0,0,0,0.62) 0%,rgba(0,0,0,0.32) 60%,rgba(0,0,0,0) 100%);"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;position:absolute;top:60px;left:0;width:${LAND_W}px;">
       <div style="display:flex;font-size:54px;font-weight:400;color:#fff;${shadow};">${p.weekday}</div>
       <div style="display:flex;font-size:132px;font-weight:700;color:#fff;line-height:1.05;margin-top:6px;${shadow};">${p.month}月${p.day}日</div>
       ${weatherLine}
@@ -140,6 +144,18 @@ function buildHtml(dataUrl, p, w) {
     .replace(/>\s+</g, "><")
     .replace(/<div style="/g, '<div style="display:flex;')
     .trim();
+}
+
+// 把橫向 satori SVG（LAND_W×LAND_H）順時針轉 90°，變成直向（LAND_H×LAND_W）。
+// 裝置轉 90° 擺放後即為正常橫向。若方向相反（上下顛倒），把下方 transform 換成
+// translate(0,${LAND_W}) rotate(-90) 即為逆時針。
+function rotateSvg90CW(svg) {
+  const inner = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+  return (
+    `<svg width="${LAND_H}" height="${LAND_W}" viewBox="0 0 ${LAND_H} ${LAND_W}" ` +
+    `xmlns="http://www.w3.org/2000/svg">` +
+    `<g transform="translate(${LAND_H},0) rotate(90)">${inner}</g></svg>`
+  );
 }
 
 async function main() {
@@ -159,17 +175,19 @@ async function main() {
   ]);
 
   const svg = await satori(toVDom(html), {
-    width: WIDTH,
-    height: HEIGHT,
+    width: LAND_W,
+    height: LAND_H,
     fonts: [
       { name: "Noto Sans TC", data: r400, weight: 400, style: "normal" },
       { name: "Noto Sans TC", data: r700, weight: 700, style: "normal" },
     ],
   });
 
-  const png = new Resvg(svg, { fitTo: { mode: "width", value: WIDTH } }).render().asPng();
+  // 橫向設計 → 旋轉 90° 成直向檔（裝置實體轉 90° 擺放）
+  const rotated = rotateSvg90CW(svg);
+  const png = new Resvg(rotated, { fitTo: { mode: "width", value: PORT_W } }).render().asPng();
   await writeFile(OUT, png);
-  console.log(`wrote ${OUT} (${png.length} bytes, ${WIDTH}x${HEIGHT})`);
+  console.log(`wrote ${OUT} (${png.length} bytes, ${PORT_W}x${PORT_H}, landscape design ${LAND_W}x${LAND_H})`);
 }
 
 main().catch((e) => {
