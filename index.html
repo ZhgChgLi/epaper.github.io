@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kobo Photo Frame</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;overflow:hidden}
+  .stage{position:fixed;inset:0;display:flex;justify-content:center;align-items:center}
+  /* frame.png 存的是直向 1072×1448、內容為橫向（給裝置轉 90° 擺放）。
+     瀏覽器旋轉 -90° 顯示成正常橫向。 */
+  #f{transform:rotate(-90deg);transform-origin:center;max-width:100vh;max-height:100vw}
+</style>
+<div class="stage"><img id="f" alt="frame"></div>
+<script>
+  // 加 cache-buster 繞過 Cloudflare 邊緣快取，並每 5 分鐘重抓最新圖
+  function load() { document.getElementById('f').src = 'frame.png?t=' + Date.now(); }
+  load();
+  setInterval(load, 5 * 60 * 1000);
+</script>
